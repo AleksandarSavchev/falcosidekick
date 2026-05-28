@@ -1,0 +1,24 @@
+#############      builder                                  #############
+FROM golang:1.26.0 AS builder
+
+WORKDIR /go/src/github.com/falcosecurity/falcosidekick
+COPY . .
+
+RUN make falcosidekick
+
+#############      base                                     #############
+FROM alpine:3.22 AS base
+
+RUN apk add --update --no-cache ca-certificates gcompat
+
+RUN addgroup -S falcosidekick && adduser -u 1234 -S falcosidekick -G falcosidekick
+USER 1234
+
+FROM base AS falcosidekick-fork
+
+WORKDIR /app
+COPY --from=builder /go/src/github.com/falcosecurity/falcosidekick/falcosidekick .
+
+EXPOSE 2801
+
+ENTRYPOINT ["./falcosidekick"]
